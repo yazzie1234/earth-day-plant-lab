@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bio-Capture Optimizer | Yasmin Shaik Research</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
+
+    :root {
+      --auxin: 0;
+      --ck: 0;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #070d1a;
+      min-height: 100vh;
+    }
+
+    /* ── Room / Scene ── */
+    #scene {
+      position: relative;
+      width: 100%;
+      height: 420px;
+      background: linear-gradient(180deg, #0a1628 0%, #112240 60%, #1a3a2a 100%);
+      border-radius: 16px;
+      overflow: hidden;
+      border: 1px solid #1e3a5f;
+    }
+
+    /* Floor */
+    #scene::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 90px;
+      background: linear-gradient(180deg, #1a3a2a 0%, #0f2318 100%);
+      border-top: 2px solid #2d5a3d;
+    }
+
+    /* Window light glow */
+    .window-glow {
+      position: absolute;
+      top: 20px; right: 30px;
+      width: 80px; height: 100px;
+      background: rgba(100, 180, 255, 0.05);
+      border: 1px solid rgba(100,180,255,0.15);
+      border-radius: 6px;
+      box-shadow: 0 0 40px rgba(100,180,255,0.08);
+    }
+    .window-glow::before, .window-glow::after {
+      content: '';
+      position: absolute;
+      background: rgba(100,180,255,0.1);
+    }
+    .window-glow::before { top: 50%; left: 0; right: 0; height: 1px; }
+    .window-glow::after  { left: 50%; top: 0; bottom: 0; width: 1px; }
+
+    /* ── Plant ── */
+    #plant-container {
+      position: absolute;
+      bottom: 90px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 220px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      transition: filter 0.8s ease;
+      transform-origin: bottom center;
+    }
+
+    #plant-svg {
+      width: 220px;
+      transition: transform 0.8s cubic-bezier(0.34,1.56,0.64,1), filter 0.8s ease;
+      transform-origin: bottom center;
+      position: relative;
+      z-index: 5;
+    }
+
+    .pot {
+      width: 80px;
+      height: 52px;
+      background: linear-gradient(180deg, #7c3f1e 0%, #4a2510 100%);
+      border-radius: 0 0 20px 20px;
+      border-top: 6px solid #9c5229;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.5);
+      position: relative;
+      z-index: 6;
+    }
+    .pot::before {
+      content: '';
+      position: absolute;
+      top: -6px; left: -8px; right: -8px;
+      height: 10px;
+      background: #b5642d;
+      border-radius: 4px 4px 0 0;
+    }
+
+    /* ── CO2 Particles ── */
+    #co2-layer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 3;
+    }
+
+    .co2-particle {
+      position: absolute;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, rgba(147,210,255,0.95), rgba(59,130,246,0.7));
+      box-shadow: 0 0 6px rgba(96,165,250,0.6);
+      animation: floatUp linear infinite;
+      opacity: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 7px;
+      color: rgba(255,255,255,0.8);
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    @keyframes floatUp {
+      0%   { transform: translateY(0)   translateX(0)   scale(0.6); opacity: 0; }
+      10%  { opacity: 1; }
+      50%  { transform: translateY(-160px) translateX(var(--drift)) scale(1); opacity: 0.85; }
+      90%  { opacity: 0.3; }
+      100% { transform: translateY(-320px) translateX(calc(var(--drift)*1.5)) scale(0.5); opacity: 0; }
+    }
+
+    /* ── Slider Custom ── */
+    input[type=range] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      outline: none;
+      cursor: pointer;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px; height: 18px;
+      border-radius: 50%;
+      background: #4ade80;
+      border: 2px solid #166534;
+      box-shadow: 0 0 8px rgba(74,222,128,0.5);
+      cursor: pointer;
+      transition: transform 0.15s;
+    }
+    input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+    #ck-slider::-webkit-slider-thumb {
+      background: #818cf8;
+      border-color: #3730a3;
+      box-shadow: 0 0 8px rgba(129,140,248,0.5);
+    }
+
+    /* ── Stat Card glow ── */
+    .stat-card { transition: box-shadow 0.3s; }
+    .stat-card:hover { box-shadow: 0 0 16px rgba(74,222,128,0.15); }
+
+    /* ── Health indicator pulse ── */
+    @keyframes pulse-green { 0%,100% { box-shadow: 0 0 0 0 rgba(74,222,128,0.4); } 50% { box-shadow: 0 0 0 8px rgba(74,222,128,0); } }
+    @keyframes pulse-red   { 0%,100% { box-shadow: 0 0 0 0 rgba(255,82,82,0.4);  } 50% { box-shadow: 0 0 0 8px rgba(255,82,82,0);  } }
+    .pulse-green { animation: pulse-green 2s infinite; }
+    .pulse-red   { animation: pulse-red   1.5s infinite; }
+
+    /* Wilt overlay */
+    #wilt-overlay {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at center, rgba(255,100,50,0.08), transparent 70%);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.8s;
+      z-index: 2;
+    }
+
+    /* Label badge */
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    /* ── Ideal State Banner ── */
+    #ideal-banner {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      z-index: 20;
+      opacity: 0;
+      transition: opacity 0.6s ease;
+    }
+    #ideal-banner.visible { opacity: 1; }
+
+    .ideal-star {
+      font-size: 3.5rem;
+      filter: drop-shadow(0 0 16px rgba(250,204,21,0.9));
+      animation: starPop 0.5s cubic-bezier(0.34,1.56,0.64,1) both, starSpin 6s linear infinite;
+    }
+    @keyframes starPop {
+      0%   { transform: scale(0) rotate(-30deg); }
+      100% { transform: scale(1) rotate(0deg); }
+    }
+    @keyframes starSpin {
+      0%   { filter: drop-shadow(0 0 12px rgba(250,204,21,0.9)); }
+      50%  { filter: drop-shadow(0 0 28px rgba(250,204,21,1)); }
+      100% { filter: drop-shadow(0 0 12px rgba(250,204,21,0.9)); }
+    }
+
+    .ideal-label {
+      margin-top: 10px;
+      background: linear-gradient(135deg, rgba(15,23,42,0.92), rgba(30,58,95,0.92));
+      border: 1px solid rgba(250,204,21,0.5);
+      border-radius: 10px;
+      padding: 8px 18px;
+      box-shadow: 0 0 24px rgba(250,204,21,0.25), inset 0 0 12px rgba(250,204,21,0.05);
+      text-align: center;
+      animation: labelSlide 0.5s 0.15s cubic-bezier(0.34,1.56,0.64,1) both;
+    }
+    @keyframes labelSlide {
+      0%   { transform: translateY(12px); opacity: 0; }
+      100% { transform: translateY(0);    opacity: 1; }
+    }
+    .ideal-label p { margin: 0; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+  </style>
+</head>
+<body class="text-slate-100 p-4 md:p-8">
+
+  <!-- Header -->
+  <div class="max-w-6xl mx-auto mb-6">
+    <div class="flex items-start justify-between flex-wrap gap-4">
+      <div>
+        <p class="text-xs font-semibold tracking-widest text-emerald-400 mb-1">RESEARCH SIMULATION</p>
+        <h1 class="text-2xl md:text-3xl font-bold tracking-tight text-white">Synbio Growth Optimizer</h1>
+        <p class="text-slate-400 text-sm mt-1">Accelerating Plant-Based Carbon Sequestration — <em>Yasmin Shaik, 2026</em></p>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="badge bg-emerald-900 text-emerald-300">B. Rapa</span>
+        <span class="badge bg-slate-700 text-slate-300">Live Simulation</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Grid -->
+  <div class="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+    <!-- Scene Column -->
+    <div class="lg:col-span-2 flex flex-col gap-4">
+
+      <!-- Scene -->
+      <div id="scene">
+        <!-- Window -->
+        <div class="window-glow"></div>
+
+        <!-- CO2 Particle Layer -->
+        <div id="co2-layer"></div>
+
+        <!-- Ideal state banner -->
+        <div id="ideal-banner">
+          <div class="ideal-star">⭐</div>
+          <div class="ideal-label">
+            <p class="text-xs font-semibold tracking-widest text-yellow-300 uppercase">Experiment Ideal State Achieved</p>
+            <p class="text-xs text-slate-400 mt-0.5">Low IAA · High BAP · +12% CO₂ Capture</p>
+          </div>
+        </div>
+
+        <!-- Wilt overlay -->
+        <div id="wilt-overlay"></div>
+
+        <!-- Scene label -->
+        <div class="absolute top-3 left-4 flex items-center gap-2 z-10">
+          <div class="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></div>
+          <span class="text-xs text-slate-400 font-medium">Growth Chamber — Live</span>
+        </div>
+
+        <!-- CO2 concentration label -->
+        <div class="absolute top-3 right-3 z-10 bg-slate-900/80 border border-slate-700 rounded-lg px-3 py-2 backdrop-blur-sm">
+          <p class="text-xs text-slate-400">Ambient CO₂</p>
+          <p id="co2-ambient" class="text-sm font-bold font-mono text-blue-300">HIGH</p>
+        </div>
+
+        <!-- Plant -->
+        <div id="plant-container">
+          <svg id="plant-svg" viewBox="0 0 220 300" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <radialGradient id="leafGrad1" cx="50%" cy="40%" r="50%">
+                <stop offset="0%" stop-color="#86efac"/>
+                <stop offset="100%" stop-color="#166534"/>
+              </radialGradient>
+              <radialGradient id="leafGrad2" cx="50%" cy="40%" r="50%">
+                <stop offset="0%" stop-color="#4ade80"/>
+                <stop offset="100%" stop-color="#14532d"/>
+              </radialGradient>
+              <radialGradient id="leafGradDead" cx="50%" cy="40%" r="50%">
+                <stop offset="0%" stop-color="#a16207"/>
+                <stop offset="100%" stop-color="#5c3a0a"/>
+              </radialGradient>
+              <linearGradient id="trunkGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#5c3317"/>
+                <stop offset="40%" stop-color="#92400e"/>
+                <stop offset="100%" stop-color="#5c3317"/>
+              </linearGradient>
+              <filter id="glow">
+                <feGaussianBlur stdDeviation="3" result="blur"/>
+                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+              </filter>
+            </defs>
+
+            <!-- Main trunk -->
+            <path id="trunk" d="M108 295 C108 295 106 240 104 200 C102 160 100 140 105 120 C110 100 112 90 110 70"
+                  stroke="url(#trunkGrad)" stroke-width="14" fill="none" stroke-linecap="round"/>
+            <!-- Trunk texture -->
+            <path d="M106 260 C109 255 107 248 106 242" stroke="#4a2510" stroke-width="2" fill="none" opacity="0.5"/>
+            <path d="M108 220 C111 215 109 208 108 202" stroke="#4a2510" stroke-width="2" fill="none" opacity="0.5"/>
+
+            <!-- Branch left lower -->
+            <path id="br-ll" d="M104 190 C90 175 68 168 52 162" stroke="url(#trunkGrad)" stroke-width="7" fill="none" stroke-linecap="round"/>
+            <!-- Branch right lower -->
+            <path id="br-rl" d="M105 170 C120 155 140 148 158 144" stroke="url(#trunkGrad)" stroke-width="7" fill="none" stroke-linecap="round"/>
+            <!-- Branch left upper -->
+            <path id="br-lu" d="M107 130 C88 118 62 108 44 100" stroke="url(#trunkGrad)" stroke-width="5" fill="none" stroke-linecap="round"/>
+            <!-- Branch right upper -->
+            <path id="br-ru" d="M108 118 C128 106 152 96 170 88" stroke="url(#trunkGrad)" stroke-width="5" fill="none" stroke-linecap="round"/>
+            <!-- Branch top -->
+            <path id="br-top" d="M110 70 C100 48 95 28 96 14" stroke="url(#trunkGrad)" stroke-width="4" fill="none" stroke-linecap="round"/>
+
+            <!-- Leaf clusters — rendered as organic ellipses with veins -->
+            <!-- Lower left cluster -->
+            <g id="leaves-ll" transform="translate(38,148)">
+              <ellipse cx="0" cy="0" rx="32" ry="22" fill="url(#leafGrad1)" transform="rotate(-25)"/>
+              <ellipse cx="18" cy="-8" rx="26" ry="18" fill="url(#leafGrad2)" transform="rotate(-10)"/>
+              <ellipse cx="-14" cy="-10" rx="22" ry="15" fill="url(#leafGrad1)" transform="rotate(-40)"/>
+              <line x1="0" y1="0" x2="-20" y2="-14" stroke="#166534" stroke-width="0.8" opacity="0.5"/>
+              <line x1="18" y1="-8" x2="0" y2="-20" stroke="#166534" stroke-width="0.8" opacity="0.5"/>
+            </g>
+            <!-- Lower right cluster -->
+            <g id="leaves-rl" transform="translate(168,130)">
+              <ellipse cx="0" cy="0" rx="30" ry="21" fill="url(#leafGrad2)" transform="rotate(20)"/>
+              <ellipse cx="-16" cy="-6" rx="24" ry="17" fill="url(#leafGrad1)" transform="rotate(5)"/>
+              <ellipse cx="14" cy="-10" rx="22" ry="14" fill="url(#leafGrad2)" transform="rotate(35)"/>
+              <line x1="0" y1="0" x2="18" y2="-14" stroke="#166534" stroke-width="0.8" opacity="0.5"/>
+            </g>
+            <!-- Upper left cluster -->
+            <g id="leaves-lu" transform="translate(34,90)">
+              <ellipse cx="0" cy="0" rx="34" ry="24" fill="url(#leafGrad1)" transform="rotate(-30)"/>
+              <ellipse cx="20" cy="-10" rx="28" ry="20" fill="url(#leafGrad2)" transform="rotate(-15)"/>
+              <ellipse cx="-18" cy="-12" rx="24" ry="16" fill="url(#leafGrad1)" transform="rotate(-48)"/>
+              <line x1="0" y1="0" x2="-22" y2="-16" stroke="#166534" stroke-width="0.8" opacity="0.5"/>
+            </g>
+            <!-- Upper right cluster -->
+            <g id="leaves-ru" transform="translate(178,74)">
+              <ellipse cx="0" cy="0" rx="32" ry="22" fill="url(#leafGrad2)" transform="rotate(25)"/>
+              <ellipse cx="-18" cy="-8" rx="26" ry="18" fill="url(#leafGrad1)" transform="rotate(10)"/>
+              <ellipse cx="16" cy="-12" rx="22" ry="15" fill="url(#leafGrad2)" transform="rotate(42)"/>
+            </g>
+            <!-- Top crown cluster -->
+            <g id="leaves-top" transform="translate(96,10)">
+              <ellipse cx="0" cy="0" rx="36" ry="28" fill="url(#leafGrad1)"/>
+              <ellipse cx="22" cy="-6" rx="30" ry="22" fill="url(#leafGrad2)" transform="rotate(15)"/>
+              <ellipse cx="-22" cy="-8" rx="30" ry="22" fill="url(#leafGrad1)" transform="rotate(-15)"/>
+              <ellipse cx="0" cy="-18" rx="28" ry="20" fill="url(#leafGrad2)"/>
+              <line x1="0" y1="0" x2="0" y2="-20" stroke="#166534" stroke-width="0.8" opacity="0.6"/>
+              <line x1="0" y1="0" x2="18" y2="-12" stroke="#166534" stroke-width="0.8" opacity="0.6"/>
+              <line x1="0" y1="0" x2="-18" y2="-12" stroke="#166534" stroke-width="0.8" opacity="0.6"/>
+            </g>
+          </svg>
+          <div class="pot"></div>
+        </div>
+
+        <!-- Scale bar -->
+        <div class="absolute bottom-4 left-4 flex items-center gap-2 z-10 opacity-50">
+          <div class="w-8 h-px bg-slate-400"></div>
+          <span class="text-xs text-slate-400">10 cm</span>
+        </div>
+      </div>
+
+      <!-- Status Message -->
+      <div id="status-card" class="rounded-xl border border-slate-700 bg-slate-900 p-4 transition-all duration-500">
+        <div class="flex items-start gap-3">
+          <span id="status-icon" class="text-lg mt-0.5">🌱</span>
+          <div>
+            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Research Status</p>
+            <p id="status-msg" class="text-sm text-slate-300 leading-relaxed">
+              Adjust hormone levels to simulate growth. Current state: <span class="text-emerald-400 font-semibold">Standard Wild-Type Control</span>.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Controls & Stats Column -->
+    <div class="flex flex-col gap-4">
+
+      <!-- CO2 Capture Stat -->
+      <div class="stat-card rounded-xl border border-slate-700 bg-slate-900 p-4">
+        <p class="text-xs font-semibold uppercase tracking-widest text-slate-500 mb-2">Estimated CO₂ Capture</p>
+        <div class="flex items-baseline gap-2 mb-3">
+          <span class="text-sm font-semibold text-slate-400">baseline</span>
+          <span id="co2-pct" class="text-3xl font-bold font-mono text-emerald-400"></span>
+        </div>
+        <!-- Progress bar -->
+        <div class="w-full bg-slate-800 rounded-full h-2">
+          <div id="co2-bar" class="h-2 rounded-full bg-gradient-to-r from-emerald-600 to-emerald-400 transition-all duration-700" style="width:100%"></div>
+        </div>
+      </div>
+
+      <!-- Health Stat -->
+      <div class="stat-card rounded-xl border border-slate-700 bg-slate-900 p-4">
+        <p class="text-xs font-semibold uppercase tracking-widest text-slate-500 mb-2">Plant Health Index</p>
+        <div class="flex items-center gap-3">
+          <div id="health-dot" class="w-3 h-3 rounded-full bg-emerald-400 pulse-green flex-shrink-0"></div>
+          <span id="health-val" class="text-xl font-bold font-mono text-emerald-400">OPTIMAL</span>
+        </div>
+        <p id="health-sub" class="text-xs text-slate-500 mt-2">All physiological indicators normal</p>
+      </div>
+
+      <!-- Genotype -->
+      <div class="rounded-xl border border-slate-700 bg-slate-900 p-4">
+        <p class="text-xs font-semibold uppercase tracking-widest text-slate-500 mb-2">Genotype</p>
+        <p class="font-semibold text-slate-200"><em>Brassica rapa</em> — Standard</p>
+        <p class="text-xs text-slate-500 mt-1">Non-modified wild-type</p>
+      </div>
+
+      <!-- Divider -->
+      <div class="border-t border-slate-700/50"></div>
+
+      <!-- Auxin Slider -->
+      <div class="rounded-xl border border-slate-700 bg-slate-900 p-4">
+        <div class="flex justify-between items-center mb-3">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-widest text-slate-500">Auxin (IAA)</p>
+            <p class="text-xs text-slate-600 mt-0.5">Indole-3-acetic acid</p>
+          </div>
+          <div class="text-right">
+            <span id="auxin-val" class="text-2xl font-bold font-mono text-emerald-400">0.0</span>
+            <span class="text-slate-400 text-sm"> ppm</span>
+          </div>
+        </div>
+        <input type="range" id="auxin-slider" min="0" max="30" value="0" step="1"
+          class="w-full"
+          style="background: linear-gradient(to right, #16a34a 0%, #16a34a 0%, #374151 0%, #374151 100%)"/>
+        <div class="flex justify-between text-xs text-slate-600 mt-1">
+          <span>0 ppm</span>
+          <span>1.5 ppm</span>
+          <span>3.0 ppm</span>
+        </div>
+      </div>
+
+      <!-- Cytokinin Slider -->
+      <div class="rounded-xl border border-slate-700 bg-slate-900 p-4">
+        <div class="flex justify-between items-center mb-3">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-widest text-slate-500">Cytokinin (BAP)</p>
+            <p class="text-xs text-slate-600 mt-0.5">6-Benzylaminopurine</p>
+          </div>
+          <div class="text-right">
+            <span id="ck-val" class="text-2xl font-bold font-mono text-indigo-400">0.0</span>
+            <span class="text-slate-400 text-sm"> ppm</span>
+          </div>
+        </div>
+        <input type="range" id="ck-slider" min="0" max="30" value="0" step="1"
+          class="w-full"
+          style="background: linear-gradient(to right, #4f46e5 0%, #4f46e5 0%, #374151 0%, #374151 100%)"/>
+        <div class="flex justify-between text-xs text-slate-600 mt-1">
+          <span>0 ppm</span>
+          <span>1.5 ppm</span>
+          <span>3.0 ppm</span>
+        </div>
+      </div>
+
+      <!-- Ratio indicator -->
+      <div class="rounded-xl border border-slate-700 bg-slate-900 p-4">
+        <p class="text-xs font-semibold uppercase tracking-widest text-slate-500 mb-2">Auxin : Cytokinin Ratio</p>
+        <div class="flex items-center gap-2">
+          <div class="flex-1 h-2 bg-slate-800 rounded-full overflow-hidden">
+            <div id="ratio-bar" class="h-full bg-gradient-to-r from-emerald-500 to-indigo-500 transition-all duration-500" style="width:50%"></div>
+          </div>
+          <span id="ratio-val" class="text-xs font-mono text-slate-400 w-12 text-right">1 : 1</span>
+        </div>
+        <p class="text-xs text-slate-600 mt-2">Optimal shoot growth: low auxin / high cytokinin</p>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Legend -->
+  <div class="max-w-6xl mx-auto mt-4 flex flex-wrap gap-4 text-xs text-slate-500">
+    <div class="flex items-center gap-1.5"><div class="w-3 h-3 rounded-full bg-blue-400 opacity-80"></div><span>CO₂ molecules (ambient)</span></div>
+    <div class="flex items-center gap-1.5"><div class="w-3 h-3 rounded-full bg-emerald-400"></div><span>Optimal growth zone</span></div>
+    <div class="flex items-center gap-1.5"><div class="w-3 h-3 rounded-full bg-red-400"></div><span>Phytotoxicity threshold</span></div>
+    <div class="flex items-center gap-1.5 ml-auto"><span>Data: Shaik, Y. (2026). <em>Accelerating Plant-Based Carbon Sequestration</em></span></div>
+  </div>
+
+<script>
+  // ── DOM refs ──
+  const auxinSlider = document.getElementById('auxin-slider');
+  const ckSlider    = document.getElementById('ck-slider');
+  const auxinVal    = document.getElementById('auxin-val');
+  const ckVal       = document.getElementById('ck-val');
+  const co2Pct      = document.getElementById('co2-pct');
+
+  const co2Bar      = document.getElementById('co2-bar');
+  const co2Ambient  = document.getElementById('co2-ambient');
+  const healthVal   = document.getElementById('health-val');
+  const healthDot   = document.getElementById('health-dot');
+  const healthSub   = document.getElementById('health-sub');
+  const statusMsg   = document.getElementById('status-msg');
+  const statusIcon  = document.getElementById('status-icon');
+  const statusCard  = document.getElementById('status-card');
+  const plantSvg    = document.getElementById('plant-svg');
+  const plantCont   = document.getElementById('plant-container');
+  const wiltOverlay  = document.getElementById('wilt-overlay');
+  const idealBanner  = document.getElementById('ideal-banner');
+  const co2Layer    = document.getElementById('co2-layer');
+  const ratioBar    = document.getElementById('ratio-bar');
+  const ratioVal    = document.getElementById('ratio-val');
+
+  // Leaf element ids for color manipulation
+  const leafGroups  = ['leaves-ll','leaves-rl','leaves-lu','leaves-ru','leaves-top'];
+
+  // ── CO2 Particle System ──
+  const MAX_PARTICLES = 40;
+  let particles = [];
+
+  function createParticle() {
+    const el = document.createElement('div');
+    el.className = 'co2-particle';
+    const size = 14 + Math.random() * 10;
+    el.style.width  = size + 'px';
+    el.style.height = size + 'px';
+    el.style.left   = (10 + Math.random() * 80) + '%';
+    el.style.bottom = (5  + Math.random() * 30) + '%';
+    el.style.setProperty('--drift', (Math.random() * 60 - 30) + 'px');
+    const duration  = 5 + Math.random() * 6;
+    const delay     = Math.random() * -duration;
+    el.style.animationDuration = duration + 's';
+    el.style.animationDelay   = delay + 's';
+    el.textContent = 'CO₂';
+    co2Layer.appendChild(el);
+    return el;
+  }
+
+  // Initialise pool
+  for (let i = 0; i < MAX_PARTICLES; i++) particles.push(createParticle());
+
+  function setParticleCount(n) {
+    // n = 0..MAX_PARTICLES
+    const count = Math.round(Math.max(0, Math.min(MAX_PARTICLES, n)));
+    particles.forEach((p, i) => {
+      p.style.display = i < count ? 'flex' : 'none';
+    });
+  }
+
+  // ── Leaf colour helper ──
+  function setLeafHealth(state) {
+    // state: 'healthy' | 'stressed' | 'dead'
+    const defs = plantSvg.querySelector('defs');
+    const lg1  = defs.querySelector('#leafGrad1');
+    const lg2  = defs.querySelector('#leafGrad2');
+
+    if (state === 'healthy') {
+      lg1.children[0].setAttribute('stop-color', '#86efac');
+      lg1.children[1].setAttribute('stop-color', '#166534');
+      lg2.children[0].setAttribute('stop-color', '#4ade80');
+      lg2.children[1].setAttribute('stop-color', '#14532d');
+    } else if (state === 'stressed') {
+      lg1.children[0].setAttribute('stop-color', '#bef264');
+      lg1.children[1].setAttribute('stop-color', '#4d7c0f');
+      lg2.children[0].setAttribute('stop-color', '#a3e635');
+      lg2.children[1].setAttribute('stop-color', '#3f6212');
+    } else {
+      lg1.children[0].setAttribute('stop-color', '#ca8a04');
+      lg1.children[1].setAttribute('stop-color', '#713f12');
+      lg2.children[0].setAttribute('stop-color', '#a16207');
+      lg2.children[1].setAttribute('stop-color', '#5c3a0a');
+    }
+  }
+
+  // ── Slider track fill ──
+  function updateTrack(slider, color) {
+    const pct = (slider.value / slider.max) * 100;
+    slider.style.background = `linear-gradient(to right, ${color} 0%, ${color} ${pct}%, #374151 ${pct}%, #374151 100%)`;
+  }
+
+  // ── Main update ──
+  function update() {
+    const aRaw = parseFloat(auxinSlider.value); // 0-30
+    const cRaw = parseFloat(ckSlider.value);    // 0-30
+    const a    = aRaw / 10;  // 0-3 ppm
+    const c    = cRaw / 10;  // 0-3 ppm
+
+    // Display values
+    auxinVal.textContent = a.toFixed(1);
+    ckVal.textContent    = c.toFixed(1);
+
+    // Track colours
+    updateTrack(auxinSlider, '#16a34a');
+    updateTrack(ckSlider,    '#4f46e5');
+
+    // Ratio bar
+    const total = a + c;
+    const aFrac = total > 0 ? a / total : 0.5;
+    ratioBar.style.width = (aFrac * 100) + '%';
+    if (total === 0) {
+      ratioVal.textContent = '1 : 1';
+    } else {
+      const gcd = (x, y) => y === 0 ? x : gcd(y, x % y);
+      const ai = Math.round(a * 10), ci = Math.round(c * 10);
+      if (ai === 0) ratioVal.textContent = '0 : ' + ci;
+      else if (ci === 0) ratioVal.textContent = ai + ' : 0';
+      else {
+        const g = gcd(ai, ci);
+        ratioVal.textContent = (ai/g) + ' : ' + (ci/g);
+      }
+    }
+
+    // ── Research logic (from original study) ──
+    let co2  = 100;
+    let scale = 1.0;
+    let wilt  = 0;
+    let leafState = 'healthy';
+    let statusText, statusIconTxt, healthText, healthSubText, healthColor, ambientText;
+    let borderColor = 'border-slate-700';
+
+    if (a === 0 && c === 0) {
+      // Control
+      co2 = 100; scale = 1.0; wilt = 0; leafState = 'healthy';
+      statusIconTxt = '🌱';
+      statusText = '<b>Control Group:</b> Standard growth baseline with no external hormonal stimulus. CO₂ capture at baseline <span class="text-emerald-400 font-semibold">100%</span>.';
+      healthText = 'OPTIMAL'; healthSubText = 'Wild-type control — stable baseline'; healthColor = 'text-emerald-400';
+      ambientText = 'HIGH';
+      borderColor = 'border-slate-700';
+
+    } else if (a > 0 && a <= 0.2 && c >= 0.8 && c <= 1.2) {
+      // Sweet spot — shoot boost
+      co2 = 112; scale = 1.25; wilt = 0; leafState = 'healthy';
+      statusIconTxt = '🎯';
+      statusText = '<span class="text-emerald-400 font-semibold">SHOOT BOOST IDENTIFIED:</span> Low auxin / high cytokinin ratio optimized shoot elongation. Significant improvement in CO₂ sequestration capacity observed (<em>p</em> &lt; 0.05).';
+      healthText = 'OPTIMAL+'; healthSubText = 'Shoot elongation — enhanced performance'; healthColor = 'text-emerald-300';
+      ambientText = 'REDUCED';
+      borderColor = 'border-emerald-700';
+
+    } else if (a > 1.5 || c > 2.0) {
+      // Toxicity
+      co2 = 93; scale = 0.82; wilt = 18; leafState = 'dead';
+      statusIconTxt = '⚠️';
+      statusText = '<span class="text-red-400 font-semibold">PHYTOTOXICITY THRESHOLD EXCEEDED:</span> Excess exogenous hormones disrupted the endogenous balance, leading to tissue stress, chlorosis, and reduced stomatal conductance.';
+      healthText = 'PHYTOTOXIC'; healthSubText = 'Chlorosis & wilting detected'; healthColor = 'text-red-400';
+      ambientText = 'ELEVATED';
+      borderColor = 'border-red-800';
+
+    } else {
+      // Balanced
+      co2 = 104; scale = 1.08; wilt = 0; leafState = 'stressed';
+      statusIconTxt = '📊';
+      statusText = '<b>Balanced Treatment:</b> Modest growth observed. Results fall within the range of natural variability (<em>p</em> &gt; 0.05). Continued adjustment recommended.';
+      healthText = 'GOOD'; healthSubText = 'Within natural variability range'; healthColor = 'text-yellow-400';
+      ambientText = 'MODERATE';
+      borderColor = 'border-slate-600';
+    }
+
+    // Apply plant transform
+    plantSvg.style.transform = `scale(${scale}) rotate(${wilt}deg)`;
+    wiltOverlay.style.opacity = wilt > 0 ? '1' : '0';
+    idealBanner.classList.toggle('visible', co2 === 112);
+    setLeafHealth(leafState);
+
+    // CO2 stats
+    const diff = co2 - 100;
+    co2Pct.textContent  = diff === 0 ? '' : diff > 0 ? '+ ' + diff + '%' : '− ' + Math.abs(diff) + '%';
+    co2Bar.style.width  = Math.min(co2, 100) + '%';
+
+    const ambientMap = { 93: 'REDUCED', 100: 'BASELINE', 104: 'ENHANCED', 112: 'MAXIMUM' };
+    const ambientText2 = ambientMap[co2] || ambientText;
+    co2Ambient.textContent = ambientText2;
+
+    const ambientColors = { REDUCED: 'text-red-400', BASELINE: 'text-blue-300', ENHANCED: 'text-yellow-300', MAXIMUM: 'text-emerald-300' };
+    co2Ambient.className = 'text-sm font-bold font-mono ' + (ambientColors[ambientText2] || 'text-blue-300');
+
+    // CO2 bar colour
+    if (co2 >= 110) {
+      co2Bar.style.background = 'linear-gradient(to right, #059669, #34d399)';
+      co2Pct.className = 'text-4xl font-bold font-mono text-emerald-300';
+    } else if (co2 < 100) {
+      co2Bar.style.background = 'linear-gradient(to right, #991b1b, #f87171)';
+      co2Pct.className = 'text-4xl font-bold font-mono text-red-400';
+    } else {
+      co2Bar.style.background = 'linear-gradient(to right, #16a34a, #4ade80)';
+      co2Pct.className = 'text-4xl font-bold font-mono text-emerald-400';
+    }
+
+    // Particles — more CO2 captured = fewer particles visible
+    // At 100% → ~30 particles; at 112% → ~14 particles; at 93% → ~40 particles
+    const particleCount = Math.round(MAX_PARTICLES * (1 - (co2 - 90) / 40));
+    setParticleCount(Math.max(8, Math.min(MAX_PARTICLES, particleCount)));
+
+    // Health
+    healthVal.textContent = healthText;
+    healthVal.className   = 'text-xl font-bold font-mono ' + healthColor;
+    healthSub.textContent = healthSubText;
+    healthDot.className   = 'w-3 h-3 rounded-full flex-shrink-0 ' + (wilt > 0 ? 'bg-red-400 pulse-red' : 'bg-emerald-400 pulse-green');
+
+    // Status
+    statusMsg.innerHTML   = statusText;
+    statusIcon.textContent = statusIconTxt;
+    statusCard.className  = 'rounded-xl border bg-slate-900 p-4 transition-all duration-500 ' + borderColor;
+  }
+
+  auxinSlider.addEventListener('input', update);
+  ckSlider.addEventListener('input', update);
+
+  // Init
+  update();
+</script>
+</body>
+</html>
