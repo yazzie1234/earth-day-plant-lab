@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plant Hormone Interactive Lab</title>
+    <style>
+        body { font-family: -apple-system, sans-serif; background: #1a1a1a; color: white; text-align: center; padding: 20px; }
+        .container { max-width: 500px; margin: auto; background: #2d2d2d; padding: 20px; border-radius: 15px; border: 1px solid #444; }
+        #plant-display { height: 300px; display: flex; align-items: flex-end; justify-content: center; margin: 20px 0; background: #000; border-radius: 10px; position: relative; overflow: hidden; }
+        .plant-stem { width: 15px; background: #4CAF50; transition: height 0.5s ease, transform 0.5s ease; border-radius: 5px 5px 0 0; }
+        .leaf { width: 30px; height: 20px; background: #66bb6a; border-radius: 50%; position: absolute; transition: all 0.5s ease; }
+        .status-light { width: 20px; height: 20px; border-radius: 50%; margin: 10px auto; background: #333; }
+        .slider-box { margin: 30px 0; }
+        input[type=range] { width: 80%; accent-color: #4CAF50; }
+        #data-readout { font-size: 0.9em; color: #aaa; margin-top: 10px; height: 60px; }
+        .warning { color: #ff5252; font-weight: bold; }
+        .success { color: #4CAF50; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Growth Optimization Lab</h2>
+    <p style="font-size: 0.8em;">Adjust the Hormone Levels (IAA/Auxin)</p>
+    
+    <div id="plant-display">
+        <div id="light" class="status-light"></div>
+        <div id="stem" class="plant-stem" style="height: 100px;"></div>
+    </div>
+
+    <div class="slider-box">
+        <input type="range" id="hormoneSlider" min="0" max="30" value="0" step="1">
+        <div id="sliderValue">Level: Baseline (0 ppm)</div>
+    </div>
+
+    <div id="data-readout">
+        <span id="desc">Select a hormone concentration to begin.</span>
+    </div>
+</div>
+
+<script>
+    const slider = document.getElementById('hormoneSlider');
+    const stem = document.getElementById('stem');
+    const light = document.getElementById('light');
+    const readout = document.getElementById('desc');
+    const valText = document.getElementById('sliderValue');
+
+    slider.addEventListener('input', () => {
+        const val = parseFloat(slider.value) / 10;
+        valText.innerText = `IAA Level: ${val.toFixed(1)} ppm`;
+
+        // Reset Styles
+        stem.style.transform = "rotate(0deg)";
+        stem.style.background = "#4CAF50";
+        light.style.background = "#333";
+        light.style.boxShadow = "none";
+
+        if (val === 0) {
+            // Baseline [cite: 133, 228]
+            stem.style.height = "100px";
+            readout.innerHTML = "<b>Control Group:</b> Standard growth baseline. No hormones added.";
+        } 
+        else if (val > 0 && val <= 0.2) {
+            // Shoot Boost Sweet Spot [cite: 269, 310]
+            stem.style.height = "140px";
+            light.style.background = "#4CAF50";
+            light.style.boxShadow = "0 0 15px #4CAF50";
+            readout.innerHTML = "<span class='success'>SHOOT BOOST ACHIEVED:</span> 0.1ppm IAA/1ppm BAP. Optimized elongation +10% CO2 capture[cite: 271, 304].";
+        }
+        else if (val > 0.2 && val <= 1.5) {
+            // Moderate/Balanced [cite: 133, 237]
+            stem.style.height = "115px";
+            readout.innerHTML = "<b>Balanced Group:</b> 1ppm IAA/1ppm BAP. Overlaps with natural variability. No statistical gain[cite: 280, 282].";
+        }
+        else {
+            // Toxicity 
+            stem.style.height = "90px";
+            stem.style.transform = "rotate(15deg)";
+            stem.style.background = "#8D6E63";
+            light.style.background = "#ff5252";
+            light.style.boxShadow = "0 0 15px #ff5252";
+            readout.innerHTML = "<span class='warning'>PHYTOTOXICITY:</span> Level exceeds 2.0ppm. Leaf curling, early wilting, and root inhibition detected[cite: 216, 341].";
+        }
+    });
+</script>
+</body>
+</html>
